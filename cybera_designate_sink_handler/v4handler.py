@@ -51,8 +51,6 @@ class NovaFloatingHandler(BaseAddressHandler):
     def process_notification(self, context, event_type, payload):
         # Take notification and create a record
         LOG.debug('FloatingV4Handler: Event type received: %s', event_type)
-        LOG.debug('FloatingV4Handler: CONTEXT: %s', context)
-        LOG.debug('FloatingV4Handler: PAYLOAD: %s', payload)
         zone = self.get_zone(cfg.CONF[self.name].zone_id)
 
         domain_id = zone['id']
@@ -61,13 +59,10 @@ class NovaFloatingHandler(BaseAddressHandler):
         # The domains are owned by admin so we need admin context?
 
         elevated_context = DesignateContext.get_admin_context(all_tenants=True, edit_managed_records=True)
-        LOG.debug('FloatingV4Handler: ELEVATED CONTEXT: %s', context)
 
         criterion = {
             "tenant_id": cfg.CONF[self.name].admin_tenant_id,
         }
-
-        LOG.debug('FloatingV4Handler: Criteria: %s', criterion)
 
         zones = self.central_api.find_zones(elevated_context, criterion)
 
@@ -77,10 +72,6 @@ class NovaFloatingHandler(BaseAddressHandler):
         reverse_id = None
 
         for i in zones:
-            #LOG.debug('FloatingV4Handler: ZONE %s', i)
-            LOG.debug('FloatingV4Handler: FLOATING IP: %s', payload['floating_ip'])
-            LOG.debug('FloatingV4Handler: REVERSE FLOATING IP: %s', reverse_address)
-
             if i.name == reverse_address[4:]:
                 reverse_id = i.id
 
@@ -109,7 +100,6 @@ class NovaFloatingHandler(BaseAddressHandler):
 
             record_type = 'A'
 
-            LOG.debug('RECORDSET A %s', payload['floating_ip'])
             recordset_values = {
                 'zone_id': domain_id,
                 'name': hostname,

@@ -90,7 +90,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
                 }
 
                 recordset = self._find_or_create_recordset(context, **recordset_values)
-                LOG.debug('NovaFixedv6Hadler AAAA %s' % fixed_ip['address'])
 
                 record_values = {
                     'data': fixed_ip['address'],
