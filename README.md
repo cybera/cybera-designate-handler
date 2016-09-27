@@ -24,7 +24,7 @@ This handler may not be used in the future, as a static predictable entry instea
 
 To build a release you'll need `python-stdeb` installed:
 
-    python setup.py --comand-packages=stdeb.command bdsit_deb
+    python setup.py --command-packages=stdeb.command bdist_deb
 
 Then upload the resulting `.deb` file from `deb_dist/` to your preferred storage area for download and installation.
 
