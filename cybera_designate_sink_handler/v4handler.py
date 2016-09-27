@@ -23,6 +23,12 @@ cfg.CONF.register_group(cfg.OptGroup(
     title="Configuration for Nova notification handler for floating v4 IPs"
 ))
 
+# Keystone AuthToken is read to find server details
+cfg.CONF.register_group(cfg.OptGroup(
+    name='keystone_authtoken',
+    title="Keystone Details"
+))
+
 cfg.CONF.register_opts([
     cfg.ListOpt('notification-topics', default=['notifications']),
     cfg.StrOpt('control-exchange', default='nova'),
@@ -30,6 +36,12 @@ cfg.CONF.register_opts([
     cfg.StrOpt('auth-uri'),
     cfg.StrOpt('admin-tenant-id')
 ], group='handler:nova_floating')
+
+cfg.CONF.register_opts([
+    cfg.StrOpt('admin_user'),
+    cfg.StrOpt('admin_password'),
+    cfg.StrOpt('admin_tenant_name'),
+], group='keystone_authtoken')
 
 
 class NovaFloatingHandler(BaseAddressHandler):
@@ -78,10 +90,11 @@ class NovaFloatingHandler(BaseAddressHandler):
         if event_type == 'network.floating_ip.associate':
             LOG.debug('FloatingV4Handler: Creating A record for %s on %s', payload['floating_ip'], payload['instance_id'])
 
-            # Get ec2id for hostname (in user's context)
-            kc = keystone_c.Client(token=context['auth_token'],
-                    tenant_id=context['tenant'],
-                    auth_url=cfg.CONF['handler:nova_floating'].auth_uri)
+            # Get ec2id for hostname (must be admin
+            kc = keystone_c.Client(username=cfg.CONF['keystone_authtoken'].admin_user,
+                    password=cfg.CONF['keystone_authtoken'].admin_password,
+                    tenant_name=cfg.CONF['keystone_authtoken'].admin_tenant_name,
+                    auth_url = cfg.CONF['handler:nova_fixed_v6'].auth_uri)
 
             nova_endpoint = kc.service_catalog.url_for(service_type='compute',
                         endpoint_type='internalURL')
@@ -91,7 +104,6 @@ class NovaFloatingHandler(BaseAddressHandler):
                         bypass_url=nova_endpoint)
 
             server_info = nvc.servers.get(payload['instance_id'])
-
 
             # Determine the hostname
             ec2id = getattr(server_info, 'OS-EXT-SRV-ATTR:instance_name')
