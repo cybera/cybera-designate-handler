@@ -81,10 +81,11 @@ class NovaFloatingHandler(BaseAddressHandler):
         # Calculate Reverse Address
         v4address = ipaddress.ip_address(payload['floating_ip'])
         reverse_address = v4address.reverse_pointer + '.'
+        reverse_network = '.'.join(reverse_address.split('.')[1:])
         reverse_id = None
 
         for i in zones:
-            if i.name == reverse_address[4:]:
+            if i.name == reverse_network:
                 reverse_id = i.id
 
         if event_type == 'network.floating_ip.associate':
