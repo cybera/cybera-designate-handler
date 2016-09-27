@@ -19,6 +19,12 @@ cfg.CONF.register_group(cfg.OptGroup(
     title="Configuration for Nova notification handler for v6"
 ))
 
+# Keystone AuthToken is read to find server details
+cfg.CONF.register_group(cfg.OptGroup(
+    name='keystone_authtoken',
+    title="Keystone Details"
+))
+
 cfg.CONF.register_opts([
     cfg.ListOpt('notification-topics', default=['notifications']),
     cfg.StrOpt('control-exchange', default='nova'),
@@ -26,6 +32,12 @@ cfg.CONF.register_opts([
     cfg.StrOpt('auth-uri'),
     cfg.StrOpt('reverse-zone-id'),
 ], group='handler:nova_fixed_v6')
+
+cfg.CONF.register_opts([
+    cfg.StrOpt('admin_user'),
+    cfg.StrOpt('admin_password'),
+    cfg.StrOpt('admin_tenant_name'),
+], group='keystone_authtoken')
 
 
 class NovaFixedV6Handler(BaseAddressHandler):
@@ -53,11 +65,15 @@ class NovaFixedV6Handler(BaseAddressHandler):
         reverse_domain_id = reverse_zone['id']
 
         if event_type == 'compute.instance.create.end':
-            kc = keystone_c.Client(token=context['auth_token'],
-                        tenant_id=context['tenant'],
-                        auth_url=cfg.CONF['handler:nova_fixed_v6'].auth_uri)
+            # Need admin context to get the ec2id. Otherwise using the normal context would have worked.
+            kc = keystone_c.Client(username=cfg.CONF['keystone_authtoken'].admin_user,
+                    password=cfg.CONF['keystone_authtoken'].admin_password,
+                    tenant_name=cfg.CONF['keystone_authtoken'].admin_tenant_name,
+                    auth_url = cfg.CONF['handler:nova_fixed_v6'].auth_uri)
+            #kc = keystone_c.Client(token=context['auth_token'],
+            #            tenant_id=context['tenant'],
+            #            auth_url=cfg.CONF['handler:nova_fixed_v6'].auth_uri)
 
-            context = DesignateContext.get_admin_context(all_tenants=True)
             nova_endpoint = kc.service_catalog.url_for(service_type='compute',
                         endpoint_type='internalURL')
 
@@ -73,6 +89,8 @@ class NovaFixedV6Handler(BaseAddressHandler):
             hostname = '%s.%s' % (ec2id, zone['name'])
 
             LOG.debug('NovaFixedV6Handler creating AAAA record (%s) for - %s', hostname, payload['instance_id'])
+            # Become Designate Admin to manage records
+            context = DesignateContext.get_admin_context(all_tenants=True)
 
             # 1 recordset of an A and AAAA record
 
