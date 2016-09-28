@@ -156,7 +156,7 @@ class NovaFixedV6Handler(BaseAddressHandler):
                                            reverse_recordset['id'],
                                            Record(**record_values))
 
-                nvc.servers.set_meta_item(instance, 'dns', hostname)
+                nvc.servers.set_meta_item(instance, 'dns', hostname[:-1])
 
         elif event_type == 'compute.instance.delete.start':
             # Nova Delete Event does not include fixed_ips. Hence why we had the instance ID in the records.
