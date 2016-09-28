@@ -81,10 +81,10 @@ class NovaFixedV6Handler(BaseAddressHandler):
                         tenant_id=kc.auth_tenant_id,
                         bypass_url=nova_endpoint)
 
-            server_info = nvc.servers.get(payload['instance_id'])
+            instance = nvc.servers.get(payload['instance_id'])
 
             # Determine the hostname
-            ec2id = getattr(server_info, 'OS-EXT-SRV-ATTR:instance_name')
+            ec2id = getattr(instance, 'OS-EXT-SRV-ATTR:instance_name')
             ec2id = ec2id.split('-', 1)[1].lstrip('0')
             hostname = '%s.%s' % (ec2id, zone['name'])
 
@@ -155,6 +155,8 @@ class NovaFixedV6Handler(BaseAddressHandler):
                                            reverse_domain_id,
                                            reverse_recordset['id'],
                                            Record(**record_values))
+
+                nvc.servers.set_meta_item(instance, 'dns', hostname)
 
         elif event_type == 'compute.instance.delete.start':
             # Nova Delete Event does not include fixed_ips. Hence why we had the instance ID in the records.
