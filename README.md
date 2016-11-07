@@ -20,6 +20,15 @@ It will also create a reverse record.
 This handler may not be used in the future, as a static predictable entry instead of the instance ec2id hostname sounds preferable
 (eg. 111-222-333-444.cloud.cybera.ca)
 
+### neutronv6handler
+
+The `neutron_fixed_v6` handler is identical to the v6handler but will check to ensure it only functions on the default public v6 network.
+As such it will create an AAAA record for the fixed IPv6 address assigned to an instance. The format is the ec2id.ZONE_NAME.
+ZONE_NAME will be location.cybera.ca
+
+It will also create a reverse record.
+
+
 ## Building (Debian)
 
 To build a release you'll need `python-stdeb` installed:
