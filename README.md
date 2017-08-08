@@ -17,8 +17,10 @@ The `nova_floating` handler will create an A record when a floating IP is assign
 
 It will also create a reverse record.
 
-This handler may not be used in the future, as a static predictable entry instead of the instance ec2id hostname sounds preferable
-(eg. 111-222-333-444.cloud.cybera.ca)
+### neutronv4handler
+
+The `neutron_floating` handler is identical to the nova network based v4handler described above but instead reacts and uses Neutron events
+instead of Nova Network events.
 
 ### neutronv6handler
 
@@ -27,7 +29,6 @@ As such it will create an AAAA record for the fixed IPv6 address assigned to an 
 ZONE_NAME will be location.cybera.ca
 
 It will also create a reverse record.
-
 
 ## Building (Debian)
 
