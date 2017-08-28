@@ -19,26 +19,16 @@ cfg.CONF.register_group(cfg.OptGroup(
     title="Configuration for Nova notification handler for v6"
 ))
 
-# Keystone AuthToken is read to find server details
-cfg.CONF.register_group(cfg.OptGroup(
-    name='keystone_authtoken',
-    title="Keystone Details"
-))
-
 cfg.CONF.register_opts([
     cfg.ListOpt('notification-topics', default=['notifications']),
     cfg.StrOpt('control-exchange', default='nova'),
     cfg.StrOpt('zone-id'),
-    cfg.StrOpt('auth-uri'),
     cfg.StrOpt('reverse-zone-id'),
-], group='handler:nova_fixed_v6')
-
-cfg.CONF.register_opts([
+    cfg.StrOpt('auth-url'),
     cfg.StrOpt('admin_user'),
     cfg.StrOpt('admin_password'),
     cfg.StrOpt('admin_tenant_name'),
-], group='keystone_authtoken')
-
+], group='handler:nova_fixed_v6')
 
 class NovaFixedV6Handler(BaseAddressHandler):
     """Handler for Nova's notifications"""
@@ -66,13 +56,10 @@ class NovaFixedV6Handler(BaseAddressHandler):
 
         if event_type == 'compute.instance.create.end':
             # Need admin context to get the ec2id. Otherwise using the normal context would have worked.
-            kc = keystone_c.Client(username=cfg.CONF['keystone_authtoken'].admin_user,
-                    password=cfg.CONF['keystone_authtoken'].admin_password,
-                    tenant_name=cfg.CONF['keystone_authtoken'].admin_tenant_name,
-                    auth_url = cfg.CONF['handler:nova_fixed_v6'].auth_uri)
-            #kc = keystone_c.Client(token=context['auth_token'],
-            #            tenant_id=context['tenant'],
-            #            auth_url=cfg.CONF['handler:nova_fixed_v6'].auth_uri)
+            kc = keystone_c.Client(username=cfg.CONF[self.name].admin_user,
+                    password=cfg.CONF[self.name].admin_password,
+                    tenant_name=cfg.CONF[self.name].admin_tenant_name,
+                    auth_url = cfg.CONF[self.name].auth_url)
 
             nova_endpoint = kc.service_catalog.url_for(service_type='compute',
                         endpoint_type='internalURL')
