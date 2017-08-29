@@ -101,7 +101,9 @@ class NeutronFloatingHandler(BaseAddressHandler):
                 # Search for an instance with the matching fixed ip
                 search_opts = {
                     'ip': payload['floatingip']['fixed_ip_address'],
-                    'all_tenants': True
+                    'status': 'ACTIVE',
+                    'all_tenants': True,
+                    'tenant_id': payload['floatingip']['tenant_id'],
                 }
                 instances = nvc.servers.list(detailed=True, search_opts=search_opts)
 
