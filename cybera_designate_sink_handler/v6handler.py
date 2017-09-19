@@ -7,7 +7,8 @@ from designate.objects import Record
 from designate.notification_handler.base import BaseAddressHandler
 from designate.context import DesignateContext
 
-from keystoneclient.v2_0 import client as keystone_c
+from keystoneauth1.identity import v3
+from keystoneauth1 import session
 from novaclient.v2 import client as nova_c
 
 import ipaddress
@@ -56,17 +57,15 @@ class NovaFixedV6Handler(BaseAddressHandler):
 
         if event_type == 'compute.instance.create.end':
             # Need admin context to get the ec2id. Otherwise using the normal context would have worked.
-            kc = keystone_c.Client(username=cfg.CONF[self.name].admin_user,
-                    password=cfg.CONF[self.name].admin_password,
-                    tenant_name=cfg.CONF[self.name].admin_tenant_name,
-                    auth_url = cfg.CONF[self.name].auth_url)
-
-            nova_endpoint = kc.service_catalog.url_for(service_type='compute',
-                        endpoint_type='internalURL')
-
-            nvc = nova_c.Client(auth_token=kc.auth_token,
-                        tenant_id=kc.auth_tenant_id,
-                        bypass_url=nova_endpoint)
+            username = cfg.CONF[self.name].admin_user
+            password = cfg.CONF[self.name].admin_password
+            tenant_name = cfg.CONF[self.name].admin_tenant_name
+            auth_url = cfg.CONF[self.name].auth_url
+            auth = v3.Password(username=username, password=password,
+                               project_name=tenant_name, project_domain_name='default',
+                               user_domain_name='default', auth_url=auth_url)
+            sess = session.Session(auth=auth)
+            nvc = nova_c.Client(2.1, session=sess)
 
             instance = nvc.servers.get(payload['instance_id'])
 
