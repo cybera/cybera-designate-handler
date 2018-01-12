@@ -48,7 +48,8 @@ class NovaFixedV6Handler(BaseAddressHandler):
         ]
 
     def process_notification(self, context, event_type, payload):
-        LOG.debug('NovaFixedV6Handler: %s', event_type)
+        LOG.debug('NovaFixedV6Handler: Event type received %s', event_type)
+        LOG.debug('NovaFixedV6Handler: Event body received %s', payload)
         zone = self.get_zone(cfg.CONF[self.name].zone_id)
         reverse_zone = self.get_zone(cfg.CONF[self.name].reverse_zone_id)
 
@@ -146,7 +147,7 @@ class NovaFixedV6Handler(BaseAddressHandler):
 
         elif event_type == 'compute.instance.delete.start':
             # Nova Delete Event does not include fixed_ips. Hence why we had the instance ID in the records.
-            LOG.debug('NovaFixedV6Handler delete AAAA record for - %s', payload['instance_id'])
+            LOG.debug('NovaFixedV6Handler delete A and AAAA record for - %s', payload['instance_id'])
 
             self._delete(zone_id=domain_id,
                     resource_id=payload['instance_id'],
@@ -155,3 +156,25 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     resource_id=payload['instance_id'],
                     resource_type='instance')
 
+            # search for and delete floating IPs
+            elevated_context = DesignateContext.get_admin_context(
+                all_tenants=True, edit_managed_records=True)
+
+            criterion = {
+                'managed': True,
+                'managed_plugin_name': 'neutron_floating',
+                'managed_resource_type': 'instance',
+                'managed_extra': 'instance:%s' % (payload['instance_id']),
+            }
+            records = self.central_api.find_records(elevated_context, criterion)
+            LOG.debug('Found %d floating ip records to delete for %s' % (len(records), payload['instance_id']))
+            for record in records:
+                zones = self.central_api.find_zones(elevated_context)
+                for zone in zones:
+                    try:
+                        recordset = self.central_api.get_recordset(elevated_context, zone['id'], record['recordset_id'])
+                        LOG.debug('Deleting record %s from %s / %s' % (record['id'], zone['id'], record['recordset_id']))
+                        #self.central_api.delete_record(elevated_context, zone['id'], record['recordset_id'], record['id'])
+                        self.central_api.delete_recordset(elevated_context, zone['id'], record['recordset_id'])
+                    except:
+                        pass
