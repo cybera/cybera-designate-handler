@@ -51,7 +51,7 @@ class NeutronFloatingHandler(BaseAddressHandler):
 
     def process_notification(self, context, event_type, payload):
         LOG.debug('NeutronFloatingHandler: Event type received: %s', event_type)
-        #LOG.debug('NeutronFloatingHandler: Event body received: %s', payload)
+        LOG.debug('NeutronFloatingHandler: Event body received: %s', payload)
         zone_id = cfg.CONF[self.name].zone_id
         zone = self.get_zone(zone_id)
 
@@ -129,7 +129,8 @@ class NeutronFloatingHandler(BaseAddressHandler):
                         'managed_plugin_name': self.get_plugin_name(),
                         'managed_plugin_type': self.get_plugin_type(),
                         'managed_resource_type': 'instance',
-                        'managed_resource_id': payload['floatingip']['id']
+                        'managed_resource_id': payload['floatingip']['id'],
+                        'managed_extra': 'instance:%s' % (getattr(instance, 'id')),
                     }
 
                     LOG.debug('Creating record in %s / %s with values %r' %
@@ -160,7 +161,8 @@ class NeutronFloatingHandler(BaseAddressHandler):
                             'managed_plugin_name': self.get_plugin_name(),
                             'managed_plugin_type': self.get_plugin_type(),
                             'managed_resource_type': 'instance',
-                            'managed_resource_id': payload['floatingip']['id']
+                            'managed_resource_id': payload['floatingip']['id'],
+                            'managed_extra': 'instance:%s' % (getattr(instance, 'id')),
                         }
 
                         LOG.debug('Creating record in %s / %s with values %r' %
@@ -170,6 +172,7 @@ class NeutronFloatingHandler(BaseAddressHandler):
                                                        recordset['id'],
                                                        Record(**record_values))
             else:
+                LOG.debug('Deleting records for %s / %s' % (zone_id, payload['floatingip']['id']))
                 self._delete(zone_id=zone_id,
                              resource_id=payload['floatingip']['id'],
                              resource_type='instance')
@@ -177,6 +180,7 @@ class NeutronFloatingHandler(BaseAddressHandler):
                 if reverse_id == None:
                     LOG.debug('UNABLE TO DETERMINE REVERSE ZONE: %s', payload['floatingip'])
                 else:
+                    LOG.debug('Deleting records for %s / %s' % (reverse_id, payload['floatingip']['id']))
                     self._delete(zone_id=reverse_id,
                         resource_id=payload['floatingip']['id'],
                         resource_type='instance')
