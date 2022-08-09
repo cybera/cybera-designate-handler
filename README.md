@@ -90,11 +90,39 @@ While untested with this repository, creating RPMs from python packages is strai
 
 ## Development
 
+### Manual install
+
 Clone this repository to `/usr/lib/python2.7/dist-packages` (ubuntu) or `/usr/lib/python2.7/site-packages/` (centos) and then run:
 
-    python setup.py develop
+```bash
+ python setup.py develop
+
+```
+
+### Installing with pip
+
+Ensure pip is installed and upgraded to the latest version:
+
+```bash
+# Ubuntu
+sudo apt-get install -y python-pip
+
+# RHEL/CentOS
+sudo yum install -y python-pip
+
+pip install --upgrade pip setuptools
+```
+
+Clone this repository to `/usr/lib/python2.7/dist-packages` (ubuntu) or `/usr/lib/python2.7/site-packages/` (centos) and then run:
+
+```bash
+pip install pbr>=0.11.1
+pip install -r requirements.txt
+pip install .
+```
 
 ## Testing
+
 
 In one terminal window, run `tail -f /path/to/logfile`.
 
@@ -106,7 +134,6 @@ $ openstack server floating ip add <name> <floating ip>
 $ openstack server floating ip remove <name> <floating ip>
 $ openstack floating ip delete <floating ip>
 ```
-
 After each of the above steps, run:
 
 ```shell

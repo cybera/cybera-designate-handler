@@ -13,6 +13,8 @@ from keystoneauth1 import session
 from novaclient import client as nova_c
 from designateclient.v2 import client as designate_c
 
+from cybera_designate_sink_handler.ip_handler import IPHandler
+
 import ipaddress
 
 LOG = logging.getLogger(__name__)
@@ -31,6 +33,8 @@ cfg.CONF.register_opts([
     cfg.StrOpt('admin-user'),
     cfg.StrOpt('admin-password'),
     cfg.StrOpt('admin-tenant-name'),
+    cfg.StrOpt('floating_ip_prefix_id'),
+    cfg.StrOpt('netbox_api_key')
 ], group='handler:neutron_floating')
 
 class NeutronFloatingHandler(BaseAddressHandler):
@@ -66,16 +70,74 @@ class NeutronFloatingHandler(BaseAddressHandler):
 
         zones = self.central_api.find_zones(elevated_context, criterion)
 
+	# Keystone auth
+        username = cfg.CONF[self.name].admin_user
+        password = cfg.CONF[self.name].admin_password
+        tenant_name = cfg.CONF[self.name].admin_tenant_name
+        auth_url = cfg.CONF[self.name].auth_url
+        auth = v3.Password(username=username, password=password,
+                           project_name=tenant_name, project_domain_name='default',
+                           user_domain_name='default', auth_url=auth_url)
+        sess = session.Session(auth=auth)
+        nvc = nova_c.Client(2.1, session=sess)
+
+	# IP address
+        floatingip = payload['floatingip']['floating_ip_address']
+        v4address = ipaddress.ip_address(floatingip)
+
+	# DNS name
+        search_opts = {
+            'ip': payload['floatingip']['fixed_ip_address'],
+            'status': 'ACTIVE',
+            'all_tenants': True,
+            'tenant_id': payload['floatingip']['tenant_id'],
+        }
+        instances = nvc.servers.list(detailed=True, search_opts=search_opts)
+        instance = instances[0]
+        ec2id = getattr(instance, 'OS-EXT-SRV-ATTR:instance_name')
+        ec2id = ec2id.split('-', 1)[1].lstrip('0')
+
+	# For netbox updating
+ 	ip_handler_address = v4address
+        ip_handler_dns = '%s.%s' % (ec2id, zone['name'])
+        ip_handler_project = context['project_name']
+
+        prefix_id = 71 #int(cfg.CONF[self.name].floating_ip_prefix_id)
+        netbox_api_key = str(cfg.CONF[self.name].netbox_api_key)
+
+        try:
+            ip_handler = IPHandler(
+                             ip_ver=4,
+                             netbox_api_key=netbox_api_key,
+                             floating_ip_prefix_id=prefix_id
+                         )
+        except Exception as e:
+            LOG.warning("ip handler was not initialized {0}".format(e))
 
         if event_type.startswith('floatingip.delete'):
             self._delete(zone_id=zone_id,
                          resource_id=payload['floatingip_id'],
                          resource_type='instance')
-        elif event_type.startswith('floatingip.update'):
-            floatingip = payload['floatingip']['floating_ip_address']
 
+            try:
+                LOG.debug(
+                      'Fetching netbox IP entry for %s' %
+                      (ip_handler_address)
+                    )
+                nb_ip = ip_handler.get_ip(str(ip_handler_address))
+
+                LOG.debug(
+                      'Unassigning IP address in netbox - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+                      (ip_handler_address, ip_handler_dns, ip_handler_project)
+                    )
+
+                ip_handler.unassign_ip(nb_ip)
+
+            except Exception as e:
+                LOG.warning("v4 address unassignment in netbox failed: {0}".format(e))
+
+        elif event_type.startswith('floatingip.update'):
             # Calculate Reverse Address
-            v4address = ipaddress.ip_address(floatingip)
             reverse_address = v4address.reverse_pointer + '.'
             reverse_network = '.'.join(reverse_address.split('.')[1:])
             reverse_id = None
@@ -87,17 +149,6 @@ class NeutronFloatingHandler(BaseAddressHandler):
                     reverse_id = i.id
 
             if payload['floatingip']['fixed_ip_address']:
-                # Create a nova client
-                username = cfg.CONF[self.name].admin_user
-                password = cfg.CONF[self.name].admin_password
-                tenant_name = cfg.CONF[self.name].admin_tenant_name
-                auth_url = cfg.CONF[self.name].auth_url
-                auth = v3.Password(username=username, password=password,
-                                   project_name=tenant_name, project_domain_name='default',
-                                   user_domain_name='default', auth_url=auth_url)
-                sess = session.Session(auth=auth)
-                nvc = nova_c.Client(2.1, session=sess)
-
                 # Search for an instance with the matching fixed ip
                 search_opts = {
                     'ip': payload['floatingip']['fixed_ip_address'],
@@ -171,11 +222,46 @@ class NeutronFloatingHandler(BaseAddressHandler):
                                                        reverse_id,
                                                        recordset['id'],
                                                        Record(**record_values))
+
+                        try:
+                            # Get netbox ip object, will create one if it's not found
+                	    LOG.debug(
+	                        'Fetching netbox IP entry for %s' %
+        	                (ip_handler_address)
+                	    )
+	                    nb_ip = ip_handler.get_ip(str(ip_handler_address))
+
+        	            LOG.debug(
+                	        'Updating netbox with IP address assignment - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+	                        (ip_handler_address, ip_handler_dns, ip_handler_project)
+        	            )
+	                    ip_handler.assign_ip(nb_ip, ip_handler_dns, ip_handler_project)
+
+                        except Exception as e:
+                            LOG.warning("v4 address update for netbox failed: %s" % e)
+                            #LOG.warning("v4 address update in netbox failed: {0}".format(payload.__dict__))
+
             else:
                 LOG.debug('Deleting records for %s / %s' % (zone_id, payload['floatingip']['id']))
-                self._delete(zone_id=zone_id,
-                             resource_id=payload['floatingip']['id'],
-                             resource_type='instance')
+                self._delete(zone_id=zone_id, resource_id=payload['floatingip']['id'], resource_type='instance')
+
+	        try:
+                    LOG.debug(
+                          'Fetching netbox IP entry for %s' %
+                          (ip_handler_address)
+                        )
+                    nb_ip = ip_handler.get_ip(str(ip_handler_address))
+
+                    LOG.debug(
+                          'Unassigning IP address in netbox - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+                          (ip_handler_address, ip_handler_dns, ip_handler_project)
+                        )
+
+                    ip_handler.unassign_ip(nb_ip)
+
+                except Exception as e:
+                    LOG.warning("v4 address unassignment in netbox failed: {0}".format(e))
+
 
                 if reverse_id == None:
                     LOG.debug('UNABLE TO DETERMINE REVERSE ZONE: %s', payload['floatingip'])
