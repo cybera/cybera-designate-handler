@@ -43,8 +43,6 @@ class IPHandler(object):
         if self.ip_ver == 6:
             return self.create_ip(address)
 
-    def list_available(self):
-        return self.prefix.available_ips.list()
 
     def unassign_ip(self, ip):
         if self.ip_ver == 4:
@@ -59,7 +57,7 @@ class IPHandler(object):
     def assign_ip(self, ip, dns, project):
 
         try:
-            description = "Floating IP - DNS={0} Project={1}".format(dns, project)
+            description = "{0} ({1})".format(project, dns)
             ip.update({'description': description})
         except Exception as e:
             LOG.warning("Couldn't run assign method: {0}".format(e))

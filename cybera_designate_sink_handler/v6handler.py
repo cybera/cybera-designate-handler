@@ -171,7 +171,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
                           'Fetching netbox IP entry for %s' %
                           (ip_handler_address)
                         )
-                    LOG.debug("ip address oject: {0}".format(dir(ip_handler_address)))
                     nb_ip = ip_handler.get_ip(ip_handler_address)
 
                     LOG.debug(
@@ -219,6 +218,7 @@ class NovaFixedV6Handler(BaseAddressHandler):
             try:
                 for ip_address in payload['fixed_ips']:
                     if ip_address['version'] == 6:
+			LOG.debug('Deleting v6 IP from netbox %s' % (ip_address))
             	        ip_handler_address = ip_address
 
                         nb_ip = ip_handler.get_ip(ip_handler_address)
@@ -226,4 +226,4 @@ class NovaFixedV6Handler(BaseAddressHandler):
                         ip_handler.unassign_ip(nb_ip)
 
             except Exception as e:
-                LOG.warning("v4 ip unassignment failed: {0}".format(e))
+                LOG.warning("v6 ip unassignment failed: {0}".format(e))
