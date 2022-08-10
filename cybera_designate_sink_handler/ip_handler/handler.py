@@ -34,15 +34,13 @@ class IPHandler(object):
 
 	ip = self.nb.ipam.ip_addresses.filter(address=address, prefix=self.prefix)
 	it = ip.__iter__()
+        if self.ip_ver == 6:
+            return self.create_ip(address)
 	try:
 	    return it.__next__()
 	except StopIteration:
             LOG.warning("get_ip() failed:  TYPE: {1}".format(dir(ip.__iter__())))
             return False
-
-        if self.ip_ver == 6:
-            return self.create_ip(address)
-
 
     def unassign_ip(self, ip):
         if self.ip_ver == 4:
