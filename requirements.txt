@@ -1,46 +1,8 @@
-# old requirements that don't play nice with pip
-# pbr>=0.6,<1.0
-# python-novaclient
-# python-keystoneclient
-
-# new requirements that pip should be able to use
-Babel==2.9.1
-certifi==2021.10.8
-chardet==4.0.0
-contextlib2==0.6.0.post1
-debtcollector==1.22.0
-enum34==1.1.10
-funcsigs==1.0.2
-idna==2.10
-importlib-resources==3.3.1
-iso8601==0.1.16
-keystoneauth1==4.6.0
-monotonic==1.6
-msgpack==1.0.4
-netaddr==0.8.0
-netifaces==0.11.0
-os-service-types==1.7.0
-oslo.config==7.0.0
-oslo.i18n==3.25.1
-oslo.serialization==2.29.3
-oslo.utils==3.42.1
-pathlib2==2.3.7.post1
+# Requirements
 pbr==0.11.1
-prettytable==0.7.2
-pyparsing==2.4.7
-python-keystoneclient==3.15.0
-python-novaclient==9.1.1
-pytz==2022.1
-PyYAML==5.4.1
-requests==2.27.1
-rfc3986==1.5.0
-scandir==1.10.0
-simplejson==3.17.6
-singledispatch==3.7.0
-six==1.16.0
-stevedore==1.32.0
-typing==3.10.0.0
-urllib3==1.26.10
-wrapt==1.14.1
-zipp==1.2.0
+python-novaclient>=9.1.1
+python-keystoneclient>=3.15.0
 pynetbox==6.6.2
+requests>=2.20.0,<3.0
+six==1.*
+
