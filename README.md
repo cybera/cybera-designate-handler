@@ -96,7 +96,6 @@ Clone this repository to `/usr/lib/python2.7/dist-packages` (ubuntu) or `/usr/li
 
 ```bash
  python setup.py develop
-
 ```
 
 ### Installing with pip
