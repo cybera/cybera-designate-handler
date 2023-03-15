@@ -77,7 +77,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
 	ec2id = getattr(instance, 'OS-EXT-SRV-ATTR:instance_name')
 	ec2id = ec2id.split('-', 1)[1].lstrip('0')
 	hostname = '%s.%s' % (ec2id, zone['name'])
-        LOG.debug("FIND ME: {0}".format(payload['fixed_ips']))
         try:
 	    ip_handler_dns = hostname
             ip_handler_project = context['project_name']
@@ -211,18 +210,20 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     try:
                         recordset = self.central_api.get_recordset(elevated_context, zone['id'], record['recordset_id'])
                         LOG.debug('Deleting record %s from %s / %s' % (record['id'], zone['id'], record['recordset_id']))
-                        #self.central_api.delete_record(elevated_context, zone['id'], record['recordset_id'], record['id'])
                         self.central_api.delete_recordset(elevated_context, zone['id'], record['recordset_id'])
                     except:
                         pass
+
             try:
-                for ip_address in payload['fixed_ips']:
-                    if ip_address['version'] == 6:
-			LOG.debug('Deleting v6 IP from netbox %s' % (ip_address))
-            	        ip_handler_address = ip_address
+		instance = nvc.servers.get(payload['instance_id'])
+                addresses = getattr(instance, 'addresses')
 
+                for address in addresses['default']:
+                    LOG.debug("%s" % (address))
+                    if address['version'] == 6:
+                        LOG.debug("Deleting v6 IP from netbox %s" % (address['addr']))
+                        ip_handler_address = address['addr']
                         nb_ip = ip_handler.get_ip(ip_handler_address)
-
                         ip_handler.unassign_ip(nb_ip)
 
             except Exception as e:

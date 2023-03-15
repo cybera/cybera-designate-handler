@@ -68,7 +68,7 @@ It will also create a reverse record.
 
 ## Building (Debian)
 
-To build a release you'll need `python-stdeb` installed:
+To build a release you'll need `python-stdeb` and `dh-python` installed, and then run
 
     python setup.py --command-packages=stdeb.command bdist_deb
 
