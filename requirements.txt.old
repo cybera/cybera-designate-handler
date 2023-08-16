@@ -1,9 +1,0 @@
-# Requirements
-pbr
-python-novaclient
-python-keystoneclient
-pynetbox
-requests
-setuptools
-setuptools-scm
-six
