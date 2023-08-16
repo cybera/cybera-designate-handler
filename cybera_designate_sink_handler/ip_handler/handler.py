@@ -15,14 +15,16 @@ class IPHandler(object):
 
         self.prefix = 71
         try:
-            self.prefix = dict(self.nb.ipam.prefixes.get(floating_ip_prefix_id))['id']
+            self.prefix = dict(self.nb.ipam.prefixes.get(
+                floating_ip_prefix_id))['id']
         except:
             pass
 
     def create_ip(self, address):
         try:
             self.nb.ipam.ip_addresses.create(address=address)
-            created_ip = self.nb.ipam.ip_addresses.filter(address=address).__iter__().__next__()
+            created_ip = self.nb.ipam.ip_addresses.filter(
+                address=address).__iter__().__next__()
 
             if created_ip:
                 return created_ip
@@ -32,13 +34,13 @@ class IPHandler(object):
     def get_ip(self, address):
         address = str(address)
 
-	ip = self.nb.ipam.ip_addresses.filter(address=address, prefix=self.prefix)
-	it = ip.__iter__()
+        ip = self.nb.ipam.ip_addresses.filter(address=address, prefix=self.prefix)
+        it = ip.__iter__()
         if self.ip_ver == 6:
             return self.create_ip(address)
-	try:
-	    return it.__next__()
-	except StopIteration:
+        try:
+            return it.__next__()
+        except StopIteration:
             LOG.warning("get_ip() failed:  TYPE: {1}".format(dir(ip.__iter__())))
             return False
 
@@ -59,4 +61,3 @@ class IPHandler(object):
             ip.update({'description': description})
         except Exception as e:
             LOG.warning("Couldn't run assign method: {0}".format(e))
-

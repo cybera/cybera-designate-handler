@@ -35,6 +35,7 @@ cfg.CONF.register_opts([
     cfg.StrOpt('netbox_api_key')
 ], group='handler:nova_fixed_v6')
 
+
 class NovaFixedV6Handler(BaseAddressHandler):
     """Handler for Nova's notifications"""
     __plugin_name__ = 'nova_fixed_v6'
@@ -60,39 +61,40 @@ class NovaFixedV6Handler(BaseAddressHandler):
         domain_id = zone['id']
         reverse_domain_id = reverse_zone['id']
 
-	# For keystone auth
-	username = cfg.CONF[self.name].admin_user
-	password = cfg.CONF[self.name].admin_password
-	tenant_name = cfg.CONF[self.name].admin_tenant_name
-	auth_url = cfg.CONF[self.name].auth_url
-	auth = v3.Password(username=username, password=password,
-			   project_name=tenant_name, project_domain_name='default',
-			   user_domain_name='default', auth_url=auth_url)
-	sess = session.Session(auth=auth)
-	nvc = nova_c.Client(2.1, session=sess)
+        # For keystone auth
+        username = cfg.CONF[self.name].admin_user
+        password = cfg.CONF[self.name].admin_password
+        tenant_name = cfg.CONF[self.name].admin_tenant_name
+        auth_url = cfg.CONF[self.name].auth_url
+        auth = v3.Password(username=username, password=password,
+                           project_name=tenant_name, project_domain_name='default',
+                           user_domain_name='default', auth_url=auth_url)
+        sess = session.Session(auth=auth)
+        nvc = nova_c.Client(2.1, session=sess)
 
-	instance = nvc.servers.get(payload['instance_id'])
+        instance = nvc.servers.get(payload['instance_id'])
 
-	# Determine the hostname
-	ec2id = getattr(instance, 'OS-EXT-SRV-ATTR:instance_name')
-	ec2id = ec2id.split('-', 1)[1].lstrip('0')
-	hostname = '%s.%s' % (ec2id, zone['name'])
+        # Determine the hostname
+        ec2id = getattr(instance, 'OS-EXT-SRV-ATTR:instance_name')
+        ec2id = ec2id.split('-', 1)[1].lstrip('0')
+        hostname = '%s.%s' % (ec2id, zone['name'])
         try:
-	    ip_handler_dns = hostname
+            ip_handler_dns = hostname
             ip_handler_project = context['project_name']
 
             netbox_api_key = str(cfg.CONF[self.name].netbox_api_key)
             prefix_id = int(cfg.CONF[self.name].floating_ip_prefix_id)
             ip_handler = IPHandler(
-                            ip_ver=6,
-                            netbox_api_key=netbox_api_key,
-                            floating_ip_prefix_id=prefix_id
-                        )
+                ip_ver=6,
+                netbox_api_key=netbox_api_key,
+                floating_ip_prefix_id=prefix_id
+            )
         except Exception as e:
             LOG.warning("ip_handler did not initialize: {0}".format(e))
 
         if event_type == 'compute.instance.create.end':
-            LOG.debug('NovaFixedV6Handler creating AAAA record (%s) for - %s', hostname, payload['instance_id'])
+            LOG.debug('NovaFixedV6Handler creating AAAA record (%s) for - %s',
+                      hostname, payload['instance_id'])
             # Become Designate Admin to manage records
             context = DesignateContext.get_admin_context(all_tenants=True)
 
@@ -111,7 +113,8 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'type': record_type
                 }
 
-                recordset = self._find_or_create_recordset(context, **recordset_values)
+                recordset = self._find_or_create_recordset(
+                    context, **recordset_values)
 
                 record_values = {
                     'data': fixed_ip['address'],
@@ -125,9 +128,9 @@ class NovaFixedV6Handler(BaseAddressHandler):
                 LOG.debug('Creating record in %s / %s with values %r' %
                           (domain_id, recordset['id'], record_values))
                 self.central_api.create_record(context,
-                                           domain_id,
-                                           recordset['id'],
-                                           Record(**record_values))
+                                               domain_id,
+                                               recordset['id'],
+                                               Record(**record_values))
 
                 # Create PTR
                 record_type = 'PTR'
@@ -137,12 +140,13 @@ class NovaFixedV6Handler(BaseAddressHandler):
                 reverse_address = v6address.reverse_pointer + '.'
 
                 recordset_values = {
-                    'zone_id' : reverse_domain_id,
-                    'name' : reverse_address,
-                    'type' : record_type
+                    'zone_id': reverse_domain_id,
+                    'name': reverse_address,
+                    'type': record_type
                 }
 
-                reverse_recordset = self._find_or_create_recordset(context, **recordset_values)
+                reverse_recordset = self._find_or_create_recordset(
+                    context, **recordset_values)
 
                 record_values = {
                     'data': hostname,
@@ -156,9 +160,9 @@ class NovaFixedV6Handler(BaseAddressHandler):
                 LOG.debug('NovaFixedV6Handler Creating record in %s / %s with values %r' %
                           (reverse_domain_id, reverse_recordset['id'], record_values))
                 self.central_api.create_record(context,
-                                           reverse_domain_id,
-                                           reverse_recordset['id'],
-                                           Record(**record_values))
+                                               reverse_domain_id,
+                                               reverse_recordset['id'],
+                                               Record(**record_values))
 
                 nvc.servers.set_meta_item(instance, 'dns', hostname[:-1])
 
@@ -167,30 +171,33 @@ class NovaFixedV6Handler(BaseAddressHandler):
 
                     # Get netbox ip object, will create one if it's not found
                     LOG.debug(
-                          'Fetching netbox IP entry for %s' %
-                          (ip_handler_address)
-                        )
+                        'Fetching netbox IP entry for %s' %
+                        (ip_handler_address)
+                    )
                     nb_ip = ip_handler.get_ip(ip_handler_address)
 
                     LOG.debug(
-                          'Updating netbox with IP address assignment - IP: "%s" DNS: "%s" PROJECT: "%s"' %
-                          (ip_handler_address, ip_handler_dns, ip_handler_project)
-                        )
-                    ip_handler.assign_ip(nb_ip, ip_handler_dns, ip_handler_project)
+                        'Updating netbox with IP address assignment - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+                        (ip_handler_address, ip_handler_dns, ip_handler_project)
+                    )
+                    ip_handler.assign_ip(
+                        nb_ip, ip_handler_dns, ip_handler_project)
 
                 except Exception as e:
-                    LOG.warning("v6 assignment in netbox failed: {0}".format(e))
+                    LOG.warning(
+                        "v6 assignment in netbox failed: {0}".format(e))
 
         elif event_type == 'compute.instance.delete.start':
             # Nova Delete Event does not include fixed_ips. Hence why we had the instance ID in the records.
-            LOG.debug('NovaFixedV6Handler delete A and AAAA record for - %s', payload['instance_id'])
+            LOG.debug(
+                'NovaFixedV6Handler delete A and AAAA record for - %s', payload['instance_id'])
 
             self._delete(zone_id=domain_id,
-                    resource_id=payload['instance_id'],
-                    resource_type='instance')
+                         resource_id=payload['instance_id'],
+                         resource_type='instance')
             self._delete(zone_id=reverse_domain_id,
-                    resource_id=payload['instance_id'],
-                    resource_type='instance')
+                         resource_id=payload['instance_id'],
+                         resource_type='instance')
 
             # search for and delete floating IPs
             elevated_context = DesignateContext.get_admin_context(
@@ -202,26 +209,32 @@ class NovaFixedV6Handler(BaseAddressHandler):
                 'managed_resource_type': 'instance',
                 'managed_extra': 'instance:%s' % (payload['instance_id']),
             }
-            records = self.central_api.find_records(elevated_context, criterion)
-            LOG.debug('Found %d floating ip records to delete for %s' % (len(records), payload['instance_id']))
+            records = self.central_api.find_records(
+                elevated_context, criterion)
+            LOG.debug('Found %d floating ip records to delete for %s' %
+                      (len(records), payload['instance_id']))
             for record in records:
                 zones = self.central_api.find_zones(elevated_context)
                 for zone in zones:
                     try:
-                        recordset = self.central_api.get_recordset(elevated_context, zone['id'], record['recordset_id'])
-                        LOG.debug('Deleting record %s from %s / %s' % (record['id'], zone['id'], record['recordset_id']))
-                        self.central_api.delete_recordset(elevated_context, zone['id'], record['recordset_id'])
+                        recordset = self.central_api.get_recordset(
+                            elevated_context, zone['id'], record['recordset_id'])
+                        LOG.debug('Deleting record %s from %s / %s' %
+                                  (record['id'], zone['id'], record['recordset_id']))
+                        self.central_api.delete_recordset(
+                            elevated_context, zone['id'], record['recordset_id'])
                     except:
                         pass
 
             try:
-		instance = nvc.servers.get(payload['instance_id'])
+                instance = nvc.servers.get(payload['instance_id'])
                 addresses = getattr(instance, 'addresses')
 
                 for address in addresses['default']:
                     LOG.debug("%s" % (address))
                     if address['version'] == 6:
-                        LOG.debug("Deleting v6 IP from netbox %s" % (address['addr']))
+                        LOG.debug("Deleting v6 IP from netbox %s" %
+                                  (address['addr']))
                         ip_handler_address = address['addr']
                         nb_ip = ip_handler.get_ip(ip_handler_address)
                         ip_handler.unassign_ip(nb_ip)

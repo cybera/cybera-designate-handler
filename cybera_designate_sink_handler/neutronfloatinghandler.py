@@ -37,6 +37,7 @@ cfg.CONF.register_opts([
     cfg.StrOpt('netbox_api_key')
 ], group='handler:neutron_floating')
 
+
 class NeutronFloatingHandler(BaseAddressHandler):
     """Handler for Neutron's notifications"""
     __plugin_name__ = 'neutron_floating'
@@ -70,7 +71,7 @@ class NeutronFloatingHandler(BaseAddressHandler):
 
         zones = self.central_api.find_zones(elevated_context, criterion)
 
-	# Keystone auth
+        # Keystone auth
         username = cfg.CONF[self.name].admin_user
         password = cfg.CONF[self.name].admin_password
         tenant_name = cfg.CONF[self.name].admin_tenant_name
@@ -81,11 +82,11 @@ class NeutronFloatingHandler(BaseAddressHandler):
         sess = session.Session(auth=auth)
         nvc = nova_c.Client(2.1, session=sess)
 
-	# IP address
+        # IP address
         floatingip = payload['floatingip']['floating_ip_address']
         v4address = ipaddress.ip_address(floatingip)
 
-	# DNS name
+        # DNS name
         search_opts = {
             'ip': payload['floatingip']['fixed_ip_address'],
             'status': 'ACTIVE',
@@ -97,20 +98,20 @@ class NeutronFloatingHandler(BaseAddressHandler):
         ec2id = getattr(instance, 'OS-EXT-SRV-ATTR:instance_name')
         ec2id = ec2id.split('-', 1)[1].lstrip('0')
 
-	# For netbox updating
- 	ip_handler_address = v4address
+        # For netbox updating
+        ip_handler_address = v4address
         ip_handler_dns = '%s.%s' % (ec2id, zone['name'])
         ip_handler_project = context['project_name']
 
-        prefix_id = 71 #int(cfg.CONF[self.name].floating_ip_prefix_id)
+        prefix_id = 71  # int(cfg.CONF[self.name].floating_ip_prefix_id)
         netbox_api_key = str(cfg.CONF[self.name].netbox_api_key)
 
         try:
             ip_handler = IPHandler(
-                             ip_ver=4,
-                             netbox_api_key=netbox_api_key,
-                             floating_ip_prefix_id=prefix_id
-                         )
+                ip_ver=4,
+                netbox_api_key=netbox_api_key,
+                floating_ip_prefix_id=prefix_id
+            )
         except Exception as e:
             LOG.warning("ip handler was not initialized {0}".format(e))
 
@@ -121,20 +122,21 @@ class NeutronFloatingHandler(BaseAddressHandler):
 
             try:
                 LOG.debug(
-                      'Fetching netbox IP entry for %s' %
-                      (ip_handler_address)
-                    )
+                    'Fetching netbox IP entry for %s' %
+                    (ip_handler_address)
+                )
                 nb_ip = ip_handler.get_ip(str(ip_handler_address))
 
                 LOG.debug(
-                      'Unassigning IP address in netbox - IP: "%s" DNS: "%s" PROJECT: "%s"' %
-                      (ip_handler_address, ip_handler_dns, ip_handler_project)
-                    )
+                    'Unassigning IP address in netbox - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+                    (ip_handler_address, ip_handler_dns, ip_handler_project)
+                )
 
                 ip_handler.unassign_ip(nb_ip)
 
             except Exception as e:
-                LOG.warning("v4 address unassignment in netbox failed: {0}".format(e))
+                LOG.warning(
+                    "v4 address unassignment in netbox failed: {0}".format(e))
 
         elif event_type.startswith('floatingip.update'):
             # Calculate Reverse Address
@@ -156,7 +158,8 @@ class NeutronFloatingHandler(BaseAddressHandler):
                     'all_tenants': True,
                     'tenant_id': payload['floatingip']['tenant_id'],
                 }
-                instances = nvc.servers.list(detailed=True, search_opts=search_opts)
+                instances = nvc.servers.list(
+                    detailed=True, search_opts=search_opts)
 
                 if len(instances) == 1:
                     instance = instances[0]
@@ -195,7 +198,8 @@ class NeutronFloatingHandler(BaseAddressHandler):
                     record_type = 'PTR'
 
                     if reverse_id == None:
-                        LOG.debug('UNABLE TO DETERMINE REVERSE ZONE: %s', payload['floatingip'])
+                        LOG.debug('UNABLE TO DETERMINE REVERSE ZONE: %s',
+                                  payload['floatingip'])
 
                     else:
                         recordset_values = {
@@ -225,48 +229,55 @@ class NeutronFloatingHandler(BaseAddressHandler):
 
                         try:
                             # Get netbox ip object, will create one if it's not found
-                	    LOG.debug(
-	                        'Fetching netbox IP entry for %s' %
-        	                (ip_handler_address)
-                	    )
-	                    nb_ip = ip_handler.get_ip(str(ip_handler_address))
+                            LOG.debug(
+                                'Fetching netbox IP entry for %s' %
+                                (ip_handler_address)
+                            )
+                            nb_ip = ip_handler.get_ip(str(ip_handler_address))
 
-        	            LOG.debug(
-                	        'Updating netbox with IP address assignment - IP: "%s" DNS: "%s" PROJECT: "%s"' %
-	                        (ip_handler_address, ip_handler_dns, ip_handler_project)
-        	            )
-	                    ip_handler.assign_ip(nb_ip, ip_handler_dns, ip_handler_project)
+                            LOG.debug(
+                                'Updating netbox with IP address assignment - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+                                (ip_handler_address,
+                                 ip_handler_dns, ip_handler_project)
+                            )
+                            ip_handler.assign_ip(
+                                nb_ip, ip_handler_dns, ip_handler_project)
 
                         except Exception as e:
-                            LOG.warning("v4 address update for netbox failed: %s" % e)
-                            #LOG.warning("v4 address update in netbox failed: {0}".format(payload.__dict__))
+                            LOG.warning(
+                                "v4 address update for netbox failed: %s" % e)
+                            # LOG.warning("v4 address update in netbox failed: {0}".format(payload.__dict__))
 
             else:
-                LOG.debug('Deleting records for %s / %s' % (zone_id, payload['floatingip']['id']))
-                self._delete(zone_id=zone_id, resource_id=payload['floatingip']['id'], resource_type='instance')
+                LOG.debug('Deleting records for %s / %s' %
+                          (zone_id, payload['floatingip']['id']))
+                self._delete(
+                    zone_id=zone_id, resource_id=payload['floatingip']['id'], resource_type='instance')
 
-	        try:
+                try:
                     LOG.debug(
-                          'Fetching netbox IP entry for %s' %
-                          (ip_handler_address)
-                        )
+                        'Fetching netbox IP entry for %s' %
+                        (ip_handler_address)
+                    )
                     nb_ip = ip_handler.get_ip(str(ip_handler_address))
 
                     LOG.debug(
-                          'Unassigning IP address in netbox - IP: "%s" DNS: "%s" PROJECT: "%s"' %
-                          (ip_handler_address, ip_handler_dns, ip_handler_project)
-                        )
+                        'Unassigning IP address in netbox - IP: "%s" DNS: "%s" PROJECT: "%s"' %
+                        (ip_handler_address, ip_handler_dns, ip_handler_project)
+                    )
 
                     ip_handler.unassign_ip(nb_ip)
 
                 except Exception as e:
-                    LOG.warning("v4 address unassignment in netbox failed: {0}".format(e))
-
+                    LOG.warning(
+                        "v4 address unassignment in netbox failed: {0}".format(e))
 
                 if reverse_id == None:
-                    LOG.debug('UNABLE TO DETERMINE REVERSE ZONE: %s', payload['floatingip'])
+                    LOG.debug('UNABLE TO DETERMINE REVERSE ZONE: %s',
+                              payload['floatingip'])
                 else:
-                    LOG.debug('Deleting records for %s / %s' % (reverse_id, payload['floatingip']['id']))
+                    LOG.debug('Deleting records for %s / %s' %
+                              (reverse_id, payload['floatingip']['id']))
                     self._delete(zone_id=reverse_id,
-                        resource_id=payload['floatingip']['id'],
-                        resource_type='instance')
+                                 resource_id=payload['floatingip']['id'],
+                                 resource_type='instance')
