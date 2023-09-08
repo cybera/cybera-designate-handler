@@ -113,8 +113,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'type': record_type
                 }
 
-                recordset = self._find_or_create_recordset(
-                    context, **recordset_values)
 
                 record_values = {
                     'data': fixed_ip['address'],
@@ -124,7 +122,10 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'managed_resource_type': 'instance',
                     'managed_resource_id': payload['instance_id']
                 }
-
+                recordset = self._create_or_update_recordset(
+                    context,
+                    [Record(**record_values)],
+                    **recordset_values)
                 LOG.debug('Creating record in %s / %s with values %r' %
                           (domain_id, recordset['id'], record_values))
                 self.central_api.create_record(context,
@@ -145,8 +146,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'type': record_type
                 }
 
-                reverse_recordset = self._find_or_create_recordset(
-                    context, **recordset_values)
 
                 record_values = {
                     'data': hostname,
@@ -156,6 +155,11 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'managed_resource_type': 'instance',
                     'managed_resource_id': payload['instance_id']
                 }
+
+                reverse_recordset = self._create_or_update_recordset(
+                    context,
+                    [Record(**record_values)],
+                    **recordset_values)
 
                 LOG.debug('NovaFixedV6Handler Creating record in %s / %s with values %r' %
                           (reverse_domain_id, reverse_recordset['id'], record_values))
