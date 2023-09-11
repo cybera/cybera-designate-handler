@@ -68,9 +68,11 @@ It will also create a reverse record.
 
 ## Building (Debian)
 
-To build a release you'll need `python-stdeb` and `dh-python` installed, and then run
+To build a release you'll need `python3-pip`, `python3-stdeb`, and `dh-python` installed, and then run
 
-    python setup.py --command-packages=stdeb.command bdist_deb
+    pip install -r requirements.txt
+    git tag v<version>
+    python3 setup.py --command-packages=stdeb.command bdist_deb
 
 Then upload the resulting `.deb` file from `deb_dist/` to your preferred storage area for download and installation.
 
@@ -80,7 +82,7 @@ Then upload the resulting `.deb` file from `deb_dist/` to your preferred storage
 
 While untested with this repository, creating RPMs from python packages is straight forward:
 
-    python setup.py bdist_rpm
+    python3 setup.py bdist_rpm
 
 ## Installation (Debian based installations)
 
@@ -112,12 +114,12 @@ sudo yum install -y python-pip
 pip install --upgrade pip setuptools
 ```
 
-Clone this repository to `/usr/lib/python2.7/dist-packages` (ubuntu) or `/usr/lib/python2.7/site-packages/` (centos) and then run:
+Clone this repository to `/usr/lib/python3/dist-packages` (ubuntu) or `/usr/lib/python3/site-packages/` (centos) and then run:
 
 ```bash
-pip install pbr>=0.11.1
-pip install -r requirements.txt
-pip install .
+pip3 install pbr>=0.11.1
+pip3 install -r requirements.txt
+pip3 install .
 ```
 
 ## Testing
