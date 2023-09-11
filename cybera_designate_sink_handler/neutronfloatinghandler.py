@@ -175,8 +175,7 @@ class NeutronFloatingHandler(BaseAddressHandler):
                         'name': hostname,
                         'type': record_type
                     }
-                    recordset = self._find_or_create_recordset(
-                        elevated_context, **recordset_values)
+
                     record_values = {
                         'data': floatingip,
                         'managed': True,
@@ -187,12 +186,12 @@ class NeutronFloatingHandler(BaseAddressHandler):
                         'managed_extra': 'instance:%s' % (getattr(instance, 'id')),
                     }
 
-                    LOG.debug('Creating record in %s / %s with values %r' %
-                              (zone_id, recordset['id'], record_values))
-                    self.central_api.create_record(elevated_context,
-                                                   zone_id,
-                                                   recordset['id'],
-                                                   Record(**record_values))
+                    LOG.debug('NeutronFloatingHandler Creating record in %s / %s with values %r' %
+                              (zone_id, hostname, record_values))
+                    recordset = self._create_or_update_recordset(
+                        elevated_context,
+                        [Record(**record_values)],
+                        **recordset_values)
 
                     # create a reverse recordset
                     record_type = 'PTR'
@@ -208,8 +207,6 @@ class NeutronFloatingHandler(BaseAddressHandler):
                             'type': record_type
                         }
 
-                        recordset = self._find_or_create_recordset(
-                            elevated_context, **recordset_values)
                         record_values = {
                             'data': hostname,
                             'managed': True,
@@ -220,12 +217,13 @@ class NeutronFloatingHandler(BaseAddressHandler):
                             'managed_extra': 'instance:%s' % (getattr(instance, 'id')),
                         }
 
-                        LOG.debug('Creating record in %s / %s with values %r' %
-                                  (reverse_id, recordset['id'], record_values))
-                        self.central_api.create_record(elevated_context,
-                                                       reverse_id,
-                                                       recordset['id'],
-                                                       Record(**record_values))
+                        LOG.debug('NeutronFloatingHandler Creating PTR record in %s / %s with values %r' %
+                                  (reverse_id, reverse_address, record_values))
+
+                        recordset = self._create_or_update_recordset(
+                            elevated_context,
+                            [Record(**record_values)],
+                            **recordset_values)
 
                         try:
                             # Get netbox ip object, will create one if it's not found

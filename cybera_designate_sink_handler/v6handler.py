@@ -113,7 +113,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'type': record_type
                 }
 
-
                 record_values = {
                     'data': fixed_ip['address'],
                     'managed': True,
@@ -122,16 +121,14 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'managed_resource_type': 'instance',
                     'managed_resource_id': payload['instance_id']
                 }
+
+                LOG.debug('NovaFixedV6Handler Creating AAAA record in %s / %s with values %r' %
+                          (domain_id, hostname, record_values))
+
                 recordset = self._create_or_update_recordset(
                     context,
                     [Record(**record_values)],
                     **recordset_values)
-                LOG.debug('Creating record in %s / %s with values %r' %
-                          (domain_id, recordset['id'], record_values))
-                self.central_api.create_record(context,
-                                               domain_id,
-                                               recordset['id'],
-                                               Record(**record_values))
 
                 # Create PTR
                 record_type = 'PTR'
@@ -146,7 +143,6 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'type': record_type
                 }
 
-
                 record_values = {
                     'data': hostname,
                     'managed': True,
@@ -156,17 +152,13 @@ class NovaFixedV6Handler(BaseAddressHandler):
                     'managed_resource_id': payload['instance_id']
                 }
 
+                LOG.debug('NovaFixedV6Handler Creating PTR record in %s / %s with values %r' %
+                          (reverse_domain_id, reverse_address, record_values))
+
                 reverse_recordset = self._create_or_update_recordset(
                     context,
                     [Record(**record_values)],
                     **recordset_values)
-
-                LOG.debug('NovaFixedV6Handler Creating record in %s / %s with values %r' %
-                          (reverse_domain_id, reverse_recordset['id'], record_values))
-                self.central_api.create_record(context,
-                                               reverse_domain_id,
-                                               reverse_recordset['id'],
-                                               Record(**record_values))
 
                 nvc.servers.set_meta_item(instance, 'dns', hostname[:-1])
 
