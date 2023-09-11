@@ -3,6 +3,6 @@
 deb_dist/*
 AUTHORS
 ChangeLog
-cybera-designate-sink-handler-0.0.1.dev220.1.1.tar.gz
 dist/
 venv/*
+*.tar.gz
